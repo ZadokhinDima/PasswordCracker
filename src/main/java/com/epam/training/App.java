@@ -1,12 +1,13 @@
 package com.epam.training;
 
 import java.util.Date;
+import java.util.concurrent.ExecutionException;
 
 public class App {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
 
-        PasswordCrackerImpl cracker = new PasswordCrackerImpl("4fd0101ea3d0f5abbe296ef97f47afec");
+        PasswordCrackerImpl cracker = new PasswordCrackerImpl();
         final long before = new Date().getTime();
         System.out.println(cracker.crackPassword());
         final long after = new Date().getTime();

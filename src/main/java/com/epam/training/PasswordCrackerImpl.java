@@ -1,57 +1,39 @@
 package com.epam.training;
 
+import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 public class PasswordCrackerImpl implements PasswordCracker {
 
-    private String desiredHash;
-
-    private final int MAX_QUEUE_SIZE = 1000;
-
     private CountDownLatch countDownLatch = new CountDownLatch(1);
 
-    private HashCalculator hashCalculator = new HashCalculator();
+    private BlockingQueue<String> passwordsToCheck = new LinkedBlockingQueue<>(20);
 
-    private ThreadPoolExecutor executor =
-            new ThreadPoolExecutor(4, 4, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(MAX_QUEUE_SIZE));
-
-    private String result;
-
-    public PasswordCrackerImpl(final String desiredHash) {
-        this.desiredHash = desiredHash;
-    }
-
-    public String crackPassword() {
-        checkPassword("");
-        try {
-            executor.awaitTermination(1, TimeUnit.DAYS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return result;
-    }
-
-    public void setDesiredHash(final String desiredHash) {
-        this.desiredHash = desiredHash;
-    }
-
-    private void checkPassword(final String password) {
-        System.out.println(password);
-        if (hashCalculator.hash(password).equals(desiredHash)) {
-            saveResult(password);
-        }
-        LETTERS.chars().mapToObj(i -> (char)i).forEach(letter -> executor.submit(() -> checkPassword(password + letter.toString())));
-    }
+    public String crackPassword() throws InterruptedException, ExecutionException {
+        PasswordsProducer producer = new PasswordsProducer(passwordsToCheck);
+        PasswordsConsumer consumer = new PasswordsConsumer(passwordsToCheck, countDownLatch);
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
+        executorService.submit(producer);
+        executorService.submit(producer);
+        final Future<String> firstFuture = executorService.submit(consumer);
+        final Future<String> secondFuture = executorService.submit(consumer);
 
 
-    private synchronized void saveResult(final String result) {
-        this.result = result;
-        executor.shutdownNow();
+        countDownLatch.await();
+        executorService.shutdown();
+        executorService.awaitTermination(1, TimeUnit.SECONDS);
+        final Optional<Future<String>> finishedFuture =
+                Stream.of(firstFuture, secondFuture).filter(Future::isDone).findFirst();
+        return finishedFuture.get().get();
     }
 
 }

@@ -1,36 +1,52 @@
 package com.epam.training;
 
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.CountDownLatch;
 
 public class PasswordsProducer implements Runnable {
 
     private BlockingQueue<String> passwordsToCheck;
 
-    private static BlockingQueue<String> queueForPasswordGeneration = new LinkedBlockingQueue<>(200);
+    private CountDownLatch countDownLatch;
 
-    private String LETTERS = "abcdefghijklmnopqrstuvwxyz";
+    private String lastPassword;
 
-    public PasswordsProducer(final BlockingQueue<String> passwordsToCheck) {
+
+    public PasswordsProducer(final BlockingQueue<String> passwordsToCheck, final CountDownLatch countDownLatch) {
         this.passwordsToCheck = passwordsToCheck;
+        this.countDownLatch = countDownLatch;
     }
 
     @Override
     public void run() {
-        generateNextLetterCombinations("");
-        while (true) {
-            generateNextLetterCombinations(queueForPasswordGeneration.poll());
+        lastPassword = "";
+        while (countDownLatch.getCount() > 0) {
+            final String newPassword;
+            synchronized(this) {
+                newPassword = generateNextPassword(lastPassword);
+                lastPassword = newPassword;
+            }
+            putToTaskQueue(newPassword);
+
         }
     }
 
-    private void generateNextLetterCombinations(String password) {
-        LETTERS.chars().mapToObj(i -> (char)i).forEach(letter -> putToTaskQueue(password + letter));
+    private String generateNextPassword(String current) {
+        if (current.isEmpty()) {
+            return "a";
+        } else if (current.endsWith("z")) {
+            String prefix = current.substring(0, current.length() - 1);
+            return generateNextPassword(prefix) + "a";
+        } else {
+            char lastCharacter = current.charAt(current.length() - 1);
+            lastCharacter++;
+            return current.substring(0, current.length() - 1) + lastCharacter;
+        }
     }
 
     private void putToTaskQueue(String password) {
         try {
             passwordsToCheck.put(password);
-            queueForPasswordGeneration.put(password);
         } catch (InterruptedException e) {
             System.out.println("Stopped producer thread");
         }

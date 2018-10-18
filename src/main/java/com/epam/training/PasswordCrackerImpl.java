@@ -1,39 +1,44 @@
 package com.epam.training;
 
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 public class PasswordCrackerImpl implements PasswordCracker {
 
+    private static final Integer PRODUCER_COUNT = 3;
+    private static final Integer CONSUMER_COUNT = 1;
+
     private CountDownLatch countDownLatch = new CountDownLatch(1);
 
-    private BlockingQueue<String> passwordsToCheck = new LinkedBlockingQueue<>(20);
+    private BlockingQueue<String> passwordsToCheck = new LinkedBlockingQueue<>(200);
+
+    private List<Thread> threads;
 
     public String crackPassword() throws InterruptedException, ExecutionException {
-        PasswordsProducer producer = new PasswordsProducer(passwordsToCheck);
-        PasswordsConsumer consumer = new PasswordsConsumer(passwordsToCheck, countDownLatch);
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
-        executorService.submit(producer);
-        executorService.submit(producer);
-        final Future<String> firstFuture = executorService.submit(consumer);
-        final Future<String> secondFuture = executorService.submit(consumer);
-
-
+        setUpThreads();
         countDownLatch.await();
-        executorService.shutdown();
-        executorService.awaitTermination(1, TimeUnit.SECONDS);
-        final Optional<Future<String>> finishedFuture =
-                Stream.of(firstFuture, secondFuture).filter(Future::isDone).findFirst();
-        return finishedFuture.get().get();
+        return "";
     }
+
+    private void setUpThreads() {
+        PasswordsProducer producer = new PasswordsProducer(passwordsToCheck, countDownLatch);
+        PasswordsConsumer consumer = new PasswordsConsumer(passwordsToCheck, countDownLatch);
+        threads = new ArrayList<>();
+
+        for (int i = 0; i < PRODUCER_COUNT; i++) {
+            threads.add(new Thread(producer));
+        }
+        for (int i = 0; i < CONSUMER_COUNT; i++) {
+            threads.add(new Thread(consumer));
+        }
+
+        threads.forEach(Thread::start);
+
+    }
+
 
 }

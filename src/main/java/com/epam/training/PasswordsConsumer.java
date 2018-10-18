@@ -1,10 +1,9 @@
 package com.epam.training;
 
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 
-public class PasswordsConsumer implements Callable<String> {
+public class PasswordsConsumer implements Runnable {
 
     private static final String DESIRED_HASH = "4fd0101ea3d0f5abbe296ef97f47afec";
 
@@ -20,14 +19,14 @@ public class PasswordsConsumer implements Callable<String> {
     }
 
     @Override
-    public String call() {
-        while (true) {
+    public void run() {
+        while (countDownLatch.getCount() > 0) {
             final String password = getNextPasswordToCheck();
-            System.out.println(password);
             final String hash = hashCalculator.hash(password);
             if (hash.equals(DESIRED_HASH)) {
                 countDownLatch.countDown();
-                return password;
+                System.out.println(password + " is correct");
+                return;
             }
         }
     }

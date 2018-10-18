@@ -1,4 +1,4 @@
-package com.epam.training;
+package com.epam.training.producer_consumer;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;

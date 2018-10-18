@@ -1,4 +1,4 @@
-package com.epam.training;
+package com.epam.training.producer_consumer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,10 +7,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class PasswordCrackerImpl implements PasswordCracker {
+import com.epam.training.PasswordCracker;
 
-    private static final Integer PRODUCER_COUNT = 3;
-    private static final Integer CONSUMER_COUNT = 1;
+public class ProducerConsumerPasswordCracker implements PasswordCracker {
+
+    private static final Integer PRODUCER_COUNT = 1;
+    private static final Integer CONSUMER_COUNT = 3;
 
     private CountDownLatch countDownLatch = new CountDownLatch(1);
 
